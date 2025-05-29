@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { LoadingBar } from './libs/LoadingBar';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 export class App {
   camera: THREE.PerspectiveCamera;
   scene: THREE.Scene;
   renderer: THREE.WebGLRenderer;
-  mesh: THREE.Mesh;
+  loadingBar: LoadingBar;
+  plane: THREE.Group | null = null;
 
   constructor() {
     const container = document.createElement('div');
@@ -19,17 +22,12 @@ export class App {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
     this.renderer.setAnimationLoop(this.render.bind(this));
 
-    // const geometry = new THREE.BoxGeometry(1, 1, 1);
-    // const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-    // this.mesh = new THREE.Mesh(geometry, material);
-    // this.scene.add(this.mesh);
-    const geometry = this.createStarGeometry(0.5, 1, 5);
-    const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-    this.mesh = new THREE.Mesh(geometry, material);
-    this.scene.add(this.mesh);
+    this.loadingBar = new LoadingBar();
+    this.loadGLTF();
 
     const ambientLight = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 0.3);
     this.scene.add(ambientLight);
@@ -61,13 +59,34 @@ export class App {
     return extrudeGeometry;
   }
 
+  loadGLTF() {
+    const loader = new GLTFLoader().setPath('/assets/plane/');
+    loader.load(
+      'microplane.glb',
+      (gltf) => {
+        this.scene.add(gltf.scene);
+        this.loadingBar.visible = false;
+        this.renderer.setAnimationLoop(this.render.bind(this));
+        this.plane = gltf.scene;
+      },
+      (xhr) => {
+        this.loadingBar.progress = xhr.loaded / xhr.total;
+      },
+      (error) => {
+        console.error(error);
+      },
+    );
+  }
+
   resize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
   render() {
-    this.mesh.rotateY(0.01);
+    if (this.plane) {
+      this.plane.rotation.y += 0.01;
+    }
     this.renderer.render(this.scene, this.camera);
   }
 }

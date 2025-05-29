@@ -19,7 +19,7 @@ export default defineConfig(({  mode }) => {
     esbuild: {
       pure: ['console.log'],
     },
-    base: '/farvater',
+    base: '/',
     build: {
       outDir: './build',
       assetsDir: './static',

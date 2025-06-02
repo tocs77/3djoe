@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { LoadingBar } from './libs/LoadingBar';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 
 export class App {
   camera: THREE.PerspectiveCamera;
@@ -9,12 +10,19 @@ export class App {
   renderer: THREE.WebGLRenderer;
   loadingBar: LoadingBar;
   plane: THREE.Group | null = null;
+  eve: THREE.Group | null = null;
+  mixer: THREE.AnimationMixer | null = null;
+  eveAnimations: Record<string, THREE.AnimationClip> = {};
+  currentAction: string = '';
+  clock: THREE.Clock;
+  curAction: THREE.AnimationAction | undefined = undefined;
 
   constructor() {
     const container = document.createElement('div');
     document.body.appendChild(container);
     window.addEventListener('resize', this.resize.bind(this));
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+    this.clock = new THREE.Clock();
     this.camera.position.set(0, 0, 4);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xaaaaaa);
@@ -27,8 +35,8 @@ export class App {
     this.renderer.setAnimationLoop(this.render.bind(this));
 
     this.loadingBar = new LoadingBar();
-    this.loadGLTF();
-
+    //this.loadGLTFPlane();
+    this.loadGLTFEve();
     const ambientLight = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 0.3);
     this.scene.add(ambientLight);
 
@@ -59,7 +67,7 @@ export class App {
     return extrudeGeometry;
   }
 
-  loadGLTF() {
+  loadGLTFPlane() {
     const loader = new GLTFLoader().setPath('/assets/plane/');
     loader.load(
       'microplane.glb',
@@ -78,6 +86,60 @@ export class App {
     );
   }
 
+  loadGLTFEve() {
+    const loader = new GLTFLoader().setPath('/assets/factory/');
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('../../../node_modules/three/examples/jsm/libs/draco/');
+    loader.setDRACOLoader(dracoLoader);
+    loader.load(
+      'eve.glb',
+      (gltf) => {
+        this.scene.add(gltf.scene);
+
+        this.eve = gltf.scene;
+        this.mixer = new THREE.AnimationMixer(this.eve);
+        for (const animation of gltf.animations) {
+          this.eveAnimations[animation.name.toLowerCase()] = animation;
+        }
+        this.newEveAnimation();
+        this.loadingBar.visible = false;
+        this.renderer.setAnimationLoop(this.render.bind(this));
+      },
+      (xhr) => {
+        this.loadingBar.progress = xhr.loaded / xhr.total;
+      },
+      (error) => {
+        console.error(error);
+      },
+    );
+  }
+
+  newEveAnimation() {
+    const keys = Object.keys(this.eveAnimations);
+    let randomKey = keys[Math.floor(Math.random() * keys.length)];
+    while (true) {
+      randomKey = keys[Math.floor(Math.random() * keys.length)];
+      if (randomKey !== this.currentAction) break;
+    }
+    this.action = randomKey;
+    setTimeout(this.newEveAnimation.bind(this), 3000);
+  }
+
+  set action(name: string) {
+    const clip = this.eveAnimations[name];
+    if (clip) {
+      const action = this.mixer?.clipAction(clip);
+      if (!action) return;
+      action?.reset();
+      action?.play();
+      if (this.curAction) {
+        this.curAction.crossFadeTo(action, 0.5);
+      }
+      this.currentAction = name;
+      this.curAction = action;
+    }
+  }
+
   resize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
@@ -87,6 +149,8 @@ export class App {
     if (this.plane) {
       this.plane.rotation.y += 0.01;
     }
+    const dt = this.clock.getDelta();
+    if (this.mixer) this.mixer.update(dt);
     this.renderer.render(this.scene, this.camera);
   }
 }

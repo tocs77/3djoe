@@ -31,8 +31,18 @@ export class Plane {
   }
 
   update(time: number) {
-    if (this.propeller) this.propeller.rotateZ(1);
-    if (this.plane) {
+    if (!this.plane || !this.propeller) {
+      console.error('plane or propeller not found');
+      return;
+    }
+    this.propeller.rotateZ(1);
+    if (this.game.active) {
+      this.velocity.y += this.game.spaceKey ? 0.001 : -0.001;
+      this.velocity.z += 0.0001;
+      this.plane.rotation.set(0, 0, Math.sin(time * 3) * 0.2, 'XYZ');
+      this.plane.translateZ(this.velocity.z);
+      this.plane.translateY(this.velocity.y);
+    } else {
       this.plane.rotation.set(0, 0, Math.sin(time * 3) * 0.2, 'XYZ');
       this.plane.position.y = Math.cos(time) * 1.5;
     }

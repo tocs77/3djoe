@@ -1,5 +1,5 @@
 //import { App } from './App';
-import { PlaneGame } from './plane/PlaneGame';
+import { loadPlaneGame } from './plane/mainPlane';
 
 //window.app = new App();
-window.planeGame = new PlaneGame();
+loadPlaneGame();

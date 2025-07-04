@@ -2,6 +2,7 @@ import { LoadingBar } from '@/libs/LoadingBar';
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { Plane } from './Plane';
+import { instId, startBtnId } from './planeTypes';
 
 export class PlaneGame {
   loadingBar: LoadingBar;
@@ -14,6 +15,8 @@ export class PlaneGame {
   renderer: THREE.WebGLRenderer;
   loading: boolean = false;
   plane: Plane | null = null;
+  spaceKey: boolean = false;
+  active: boolean = false;
 
   constructor() {
     const container = document.createElement('div');
@@ -44,9 +47,8 @@ export class PlaneGame {
     container.appendChild(this.renderer.domElement);
     this.setEnvironment();
     this.load();
-
+    this.addEventListeners();
     this.renderer.setAnimationLoop(this.render.bind(this));
-
     window.addEventListener('resize', this.resize.bind(this));
   }
 
@@ -107,5 +109,47 @@ export class PlaneGame {
     this.plane?.update(time);
     this.updateCamera();
     this.renderer.render(this.scene, this.camera);
+  }
+  startGame() {
+    const instructions = document.getElementById(instId);
+    if (instructions) {
+      instructions.style.display = 'none';
+    }
+    const startBtn = document.getElementById(startBtnId);
+    if (startBtn) {
+      startBtn.style.display = 'none';
+    }
+    this.active = true;
+  }
+  mouseDown() {
+    this.spaceKey = true;
+  }
+  mouseUp() {
+    this.spaceKey = false;
+  }
+  keyDown(e: KeyboardEvent) {
+    if (e.key === ' ') {
+      this.spaceKey = true;
+    }
+  }
+  keyUp(e: KeyboardEvent) {
+    if (e.key === ' ') {
+      this.spaceKey = false;
+    }
+  }
+  private addEventListeners() {
+    window.addEventListener('keydown', this.keyDown.bind(this));
+    window.addEventListener('keyup', this.keyUp.bind(this));
+    window.addEventListener('touchstart', this.mouseDown.bind(this));
+    window.addEventListener('touchend', this.mouseUp.bind(this));
+    window.addEventListener('mousedown', this.mouseDown.bind(this));
+    window.addEventListener('mouseup', this.mouseUp.bind(this));
+    this.spaceKey = false;
+    this.active = false;
+
+    const startBtn = document.getElementById(startBtnId);
+    if (startBtn) {
+      startBtn.addEventListener('click', this.startGame.bind(this));
+    }
   }
 }
